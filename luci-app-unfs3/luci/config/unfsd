@@ -1,0 +1,4 @@
+config unfsd 'main'
+	option enabled '0'
+	option anon_root '/mnt/'
+	option write_enable '0'
