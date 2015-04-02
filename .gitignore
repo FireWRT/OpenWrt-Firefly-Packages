@@ -1,0 +1,13 @@
+dist/
+/host
+*.o
+*.so
+*.swp
+/docs
+.running-sdk
+build/po2lmo
+contrib/uci/series
+contrib/uhttpd/uhttpd-src/
+modules/admin-full/src/luci-bwc
+modules/base/src/po2lmo
+*~

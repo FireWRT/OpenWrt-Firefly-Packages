@@ -1,0 +1,18 @@
+#!/bin/sh
+
+# Return the capability of router
+
+cpu=`cat /proc/cpuinfo | awk '/system type/{print $5}'`
+flashsize=`cat /proc/mtd | awk '/fullflash/{print $2}'`
+
+if [ $flashsize = "01000000" ]; then
+	if [ $cpu = "MT7620A" ]; then
+		cap="RY-02"
+	else
+		cap="RY-1A"
+	fi
+else
+	cap="RY-1" 
+fi
+
+echo $cap

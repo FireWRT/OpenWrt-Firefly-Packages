@@ -1,0 +1,32 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-03-17 17:00+0200\n"
+"PO-Revision-Date: 2015-03-17 17:00+0200\n"
+"Last-Translator: jay <linux.c@foxmail.com>\n"
+"Language-Team: Firefly <fl.service@t-firefly.com>\n"
+"Language: zh_TW\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Pootle 2.0.6\n"
+
+msgid "Home Page"
+msgstr "首頁"
+
+msgid "Wiki"
+msgstr "維基"
+
+msgid "Community"
+msgstr "社區"
+
+msgid "Contact Us"
+msgstr "聯繫我們"
+
+msgid "You do not have permission to do that. Please login again!"
+msgstr "您沒有權限訪問，請重新登錄！"
+
+msgid "Not found this device. Please plugging the device into a different port!"
+msgstr "找不到該設備，請檢查設備是否插入。"

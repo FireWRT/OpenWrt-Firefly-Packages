@@ -1,0 +1,25 @@
+#!/bin/sh
+
+DownloadPath="/tmp/test_bin"
+current_server_file="http://r.xcloud.cc/router_get.php"
+
+wget $current_server_file -O $DownloadPath 2>/dev/null &
+
+sleep 1
+time_start=$(date +%s)
+size_start=$(du $DownloadPath | awk -F " " '{print $1}')
+
+sleep 1
+time_stop=$(date +%s)
+size_stop=$(du $DownloadPath | awk -F " " '{print $1}')
+file_size=$(($size_stop-$size_start))
+time_used=$(($time_stop-$time_start))
+
+tmpid=`pidof wget`
+kill -9 $tmpid 2>/dev/null
+rm -f $DownloadPath 2>/dev/null
+
+tmp_value=` expr $file_size / $time_used `
+tmp_speed=` expr $tmp_value \* 1024 `
+#Byte/s
+echo "$tmp_speed"

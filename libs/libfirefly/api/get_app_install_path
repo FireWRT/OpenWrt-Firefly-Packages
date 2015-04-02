@@ -1,0 +1,53 @@
+#!/bin/sh 
+#
+# This Script is used to get the plugin install real path 
+#
+#set -x
+
+parameter_count=$#
+app_name=$1
+usbmount="/tmp/usbmounted"
+
+#检查参数是否正确
+check_parameter()
+{
+	if [ ${parameter_count} -ne 2 ];then
+		echo "Fail:Parameter Error!"
+		exit 1
+	fi
+}
+
+
+path=`uci get fpkg.${app_name}.plugin_Position`
+subpath=`uci get fpkg.${app_name}.plugin_IntallPath`
+
+if [ -z "$path" ] ;then
+    exit 1
+fi
+
+if [ -z "$subpath" ] ; then
+    exit 1
+fi
+
+if [ "${path}x" == "Internal Storagex" ];then
+    echo ${subpath}
+    exit 0
+fi
+
+if [ ! -f ${usbmount} ];then
+    exit 2
+fi
+
+udisk=`cat "${usbmount}" | grep "${path}" |  awk -F "//" '{print $1}'`
+
+if [ -z "$udisk" ];then
+    exit 3
+else
+    echo -e "/mnt/"${udisk}${subpath#*opt}"\c"
+    exit 0
+fi
+
+
+
+
+

@@ -1,0 +1,34 @@
+<%
+	local disp = require "luci.dispatcher"
+
+	local request  = disp.context.path
+
+	local category = request[1]
+
+	local tree = disp.node()
+
+	local categories = disp.node_childs(tree)
+%>
+        </div>
+    </div>
+    <footer>
+       <div id="ft" class="ft" >
+            <div class="fcaidan">
+              <em><a href="http://www.t-firefly.com"><%=translate("Home Page")%></a></em><span class="pies">|</span>
+              <em><a href="http://wiki.t-firefly.com/"><%=translate("Wiki")%></a></em><span class="pies">|</span>
+              <em><a href="http://www.t-firefly.com/html/zh/bbs/"><%=translate("Community")%></a></em><span class="pies">|</span>
+              <em><%=translate("Contact Us")%></em>
+              <em><a href="mailto:teefirefly@gmail.com" target="_black"><span class="icon_public gmail"></span></a></em>
+              <em><a href="http://weibo.com/teefirefly" target="_black"><span class="icon_public weibo"></span></a></em>
+              <em><a href="https://www.facebook.com/TeeFirefly" target="_black"><span class="icon_public facebook"></span></a></em>
+              <em><a href="https://twitter.com/TeeFirefly" target="_black"><span class="icon_public twitter"></span></a></em>
+           </div>
+		    <div class="powerby">Copyright @ 2014 Firefly  All Right Reserved.</div>
+       </div>
+    </footer>
+    
+    </body>
+</html>
+
+<div class="hidden" id="error403"><%=translate("You do not have permission to do that. Please login again!")%></div>
+<div class="hidden" id="error100"><%=translate("Not found this device. Please plugging the device into a different port!")%></div>

@@ -1,0 +1,149 @@
+@charset "utf-8";
+/* CSS Document */
+
+.fire-app-context{
+	width:100%;
+	margin:5px;
+	overflow:hidden;
+	min-height:120px;
+}
+
+.fire-app-loading{
+	margin-left:auto;
+	margin-right:auto;
+	margin-top:50px;
+	width:200px;
+	height:100px;
+	text-align:center;
+}
+
+.fire_app_empty{
+	margin-top:80px;
+	display:none;
+	font-size:13px;
+	font-weight:bold;
+}
+
+.fire-app-list:hover{
+	border:1px #E5E4E4 solid;
+	background:#f9f9f9;
+	cursor:pointer;
+}
+
+.fire-app-list{
+	height:100px;
+	width:300px;
+	margin:5px;
+	float:left;
+	border:1px #FFFFFF solid;
+}
+
+.fire-app-logo{
+	height:90px;
+	width:90px;
+	margin:5px;
+	float:left;
+}
+
+.fire-app-delete-icon{
+	height:25px;
+	width:25px;
+	float:right;
+	display:none;
+}
+
+.fire-app-logo img{
+	height:90px;
+	width:90px;
+}
+
+.fire-app-title{
+	height:40px;
+	line-height:40px;
+	width:auto;
+	margin-right:5px;
+	margin-top:5px;
+	margin-left:100px;
+	font-size:20px;
+}
+
+.fire-app-version{
+	height:20px;
+	line-height:20px;
+	width:auto;
+	margin-right:5px;
+	margin-left:100px;
+	margin-top:5px;
+}
+
+.fire-app-author{
+	height:20px;
+	line-height:20px;
+	width:auto;
+	margin-right:5px;
+	margin-left:100px;
+	margin-top:5px;
+}
+
+.fire-second-title{
+	border-bottom:1px #CCCCCC solid;
+	padding:5px;
+	margin-bottom:10px;
+	width:98%;
+	overflow:hidden;
+}
+
+.fire-manage{
+	float:right;
+	margin-top:22px;
+	margin-right:10px;
+}
+
+.fire-legend{
+	float:left;
+}
+
+#fire-cancel-manage{
+	display:none;
+}
+
+.fire-upload-plugin{
+	padding:5px;
+}
+
+.fire-delete-alert{
+	display:none;
+}
+
+.firefly_app_view{
+    position:absolute;
+	top:5%;
+	left:5%;
+	width:90%;
+	height:90%;
+	float:left;
+    z-index: 99999;
+    border: 1px #ccc solid;
+    background:#fff;
+}
+
+.firefly_app_view_title{
+    background-color:#f26039;
+    height:50px;
+    line-height: 50px;
+    border-bottom: 1px #ccc solid;
+    text-align: right;
+}
+
+#firefly_app_view_close{
+    color: #fff;
+    font-size: 16px;
+    padding-right:13px;
+    text-decoration: none;
+}
+
+.firefly_app_view_iframe{
+    width:100%;
+    height:100%;
+    border:0px;
+}

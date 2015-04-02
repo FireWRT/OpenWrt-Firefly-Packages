@@ -1,0 +1,5 @@
+#!/bin/sh
+tmp_value=$(ping -w 2 -q www.baidu.com -c 1 | awk -F / '{ if (match($0, "min/avg/max")) print $4}')
+#ms, print $3: max, print $4: avg,print $5 max
+echo "$tmp_value"
+

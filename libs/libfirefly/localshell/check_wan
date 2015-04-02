@@ -1,0 +1,25 @@
+#!/bin/sh
+
+TMP_XROUTER_WANCHECK_FILE=/tmp/xRouter_wancheck_connect
+wan_status="$(ubus call network.interface.wan status | grep "\"up\"" | awk -F ':' '{print $2}' | awk -F ',' '{print $1}')"
+if [ -n "$wan_status" ] && [ "$wan_status" = " true" ];then
+	#rm -f $TMP_XROUTER_WANCHECK_FILE 2>/dev/null
+	if [ "$(uci get network.wan.proto)" = "pppoe" ];then
+                wan_device="pppoe-wan"
+        else
+                wan_device="$(uci get network.wan.ifname)"
+        fi
+	
+	if [ $(route | grep "$wan_device" | wc -l) -ge 2 ];then
+		line=$(ubus call network.interface.wan status | grep  -n  "dns-server" | head -1 | cut -d ":" -f 1)
+		dns1=$(ubus call network.interface.wan status | sed -n $((line + 1))p | awk -F ',' '{print $1}')
+		dns2=$(ubus call network.interface.wan status | sed -n $((line + 2))p)
+		
+		if [ -n "$dns1" ] || [ -n "$dns2" ];then
+			if [ ! "$dns1" = "$dns2" ];then
+				#uci set user.@wan_conn[-1].connection="1"
+				touch $TMP_XROUTER_WANCHECK_FILE
+			fi
+		fi
+	fi
+fi

@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# Download firmware for upgrade
+
+DownloadPath="/tmp/firmware.img"
+DownloadResult="/tmp/wget_firmware_result"
+
+if [ "$1" = "abort" ]; then
+	kill `ps w | awk '/.*wget.*\/tmp\/firmware\.img/{print $1}'`
+	echo "Download cancelled by user."
+	exit 2
+fi
+
+rm -f $DownloadPath
+rm -f $DownloadResult
+
+Result="0%"
+echo "$Result" > $DownloadResult
+
+wget -T 30 $1 -O $DownloadPath 2>&1 \
+	| awk -v RS='\r' '/[0-9]+%/{printf("%s\n", gensub(/.* ([0-9]+%).*/, "\\1", "g"))}' \
+	| tee $DownloadResult
+
+Result=$(sed -n "/100%/p" $DownloadResult)
+Result=${Result:0:3}
+
+if [ "$Result" = "100" ]; then
+	exit 0
+else
+	echo "Download firmware failed!"
+	exit 1
+fi

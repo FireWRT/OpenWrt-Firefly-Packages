@@ -1,0 +1,33 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-03-17 17:00+0200\n"
+"PO-Revision-Date: 2015-03-17 17:00+0200\n"
+"Last-Translator: jay <linux.c@foxmail.com>\n"
+"Language-Team: Firefly <fl.service@t-firefly.com>\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Pootle 2.0.6\n"
+
+msgid "Home Page"
+msgstr "Home Page"
+
+msgid "Wiki"
+msgstr "Wiki"
+
+msgid "Community"
+msgstr "Community"
+
+msgid "Contact Us"
+msgstr "Contact Us"
+
+
+msgid "You do not have permission to do that. Please login again!"
+msgstr "You do not have permission to do that. Please login again!"
+
+msgid "Not found this device. Please plugging the device into a different port!"
+msgstr "Not found this device. Please plugging the device into a different port!"

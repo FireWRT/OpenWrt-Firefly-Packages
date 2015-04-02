@@ -1,0 +1,72 @@
+#!/bin/sh
+
+CheckSambaConfig() {
+
+	if [ ! -f /etc/config/samba ]; then
+		ln -s  /opt/app/samba/etc/config/samba /etc/config/samba
+	fi
+	
+	 if [ ! -f /etc/init.d/samba ]; then
+		ln -s  /opt/app/samba/etc/init.d/samba /etc/init.d/samba
+	fi
+	
+	 if [ ! -f /etc/samba/lowcase.dat ]; then
+		ln -s  /opt/app/samba/etc/samba/lowcase.dat /etc/samba/lowcase.dat
+	fi
+	
+	 if [ ! -f /etc/samba/upcase.dat ]; then
+		ln -s  /opt/app/samba/etc/samba/upcase.dat /etc/samba/upcase.dat
+	fi
+	
+	 if [ ! -f /etc/samba/valid.dat ]; then
+		ln -s  /opt/app/samba/etc/samba/valid.dat /etc/samba/valid.dat
+	fi
+	
+	 if [ ! -f /etc/samba/smb.conf.template ]; then
+		ln -s  /opt/app/samba/etc/samba/smb.conf.template /etc/samba/smb.conf.template
+	fi
+	
+	 if [ ! -f /usr/sbin/nmbd ]; then
+		ln -s  /opt/app/samba/usr/sbin/nmbd /usr/sbin/nmbd
+	fi
+	
+	 if [ ! -f /usr/sbin/samba_multicall ]; then
+		ln -s  /opt/app/samba/usr/sbin/samba_multicall /usr/sbin/samba_multicall
+	fi
+	
+	 if [ ! -f /usr/sbin/smbd ]; then
+		ln -s  /opt/app/samba/usr/sbin/smbd /usr/sbin/smbd
+	fi
+	
+	 if [ ! -f /usr/sbin/smbpasswd ]; then
+		ln -s  /opt/app/samba/usr/sbin/smbpasswd /usr/sbin/smbpasswd
+	fi
+ 
+}
+
+PluginIntallPath="/opt/app/appinstalled/"
+SambaPluginID="7"
+InitSamba() {
+		AllInstallFile=`ls $PluginIntallPath`
+		for EachFiles in ${AllInstallFile}
+		do
+			OneInstallFilePath=`printf "%s%s" "$PluginIntallPath" "$EachFiles"`
+			PluginID=`cat ${OneInstallFilePath} | grep "plugin_ID" |awk -F ":" '{print $2}'`
+			 if  [ "$PluginID" = "$SambaPluginID" ]; then
+				CheckSambaConfig	
+				break
+			 fi
+		done
+
+}
+
+Capbility=`/usr/local/localshell/getcapability`
+	
+if [ "$Capbility" = "RY-1" ]; then
+	InitSamba
+fi
+
+
+if [ -f /etc/config/samba ]; then
+	> /etc/config/samba 
+fi

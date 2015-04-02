@@ -1,0 +1,52 @@
+#!/bin/sh
+mnt="/mnt"
+kill_all() {
+    PIDS=`fuser -m $1`
+    if [ ! -z "$PIDS"  ];then
+        for line in $PIDS
+        do
+            if [ "$line" -eq "1"  ]; then
+                break
+            fi
+            kill -9 $line 
+        done
+    fi
+
+}
+foreachd(){
+        for file in $mnt/*
+        do
+            if [ -d $file ]
+            then
+                kill_all $file 1>/dev/null 2>&1
+                       umount_device_ret=$(umount $file 2>&1) 
+                       umount_device_ret_erro=`echo $umount_device_ret | grep "can't"`
+            fi
+           
+               if [ -z "$umount_device_ret_erro" ];then
+                       rm -r $file 1>/dev/null 2>&1
+                       echo "Success"
+               else
+                   echo "Error umout"
+               fi
+        done
+}
+countfile=0
+
+for file in $mnt/*
+do
+    if [ -d $file ]
+    then
+        countfile=$countfile+1
+        break;
+    fi
+done
+
+if [ $countfile -eq 0 ]
+then
+    echo 0 > /sys/class/gpio/gpio24/value 
+else
+    foreachd $mnt
+    sleep 1
+    echo 0 > /sys/class/gpio/gpio24/value 
+fi

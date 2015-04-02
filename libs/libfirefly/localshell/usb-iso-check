@@ -1,0 +1,75 @@
+#!/bin/sh
+#set -x
+
+dev_usb_state_file="/tmp/usbstate"
+USB_MNT_TMP="/tmp/usbdir"
+dev_iso="sda"
+iso_name=".128M.iso"
+find_sda=0
+if [ ! -s $dev_usb_state_file ]; then
+	echo "NULL///0"
+	exit 0
+fi
+
+num="1"
+cur_line=`printf "%sp" "$num"`
+
+
+
+while [ "null" = "null" ]; do
+line=`sed -n $cur_line $dev_usb_state_file`
+	 
+		manufact=`echo $line | awk '{print $1}'`
+
+		if [ -z $manufact ]; then
+		   break	
+		fi
+		let num=$num+1
+		cur_line=`printf "%sp" "$num"`
+	
+		sdxx=`echo $line | awk '{print $2}'`
+		if [ -z $sdxx ]; then
+		   continue
+		fi
+
+		if [ $sdxx != "$dev_iso" ]; then
+			continue
+		fi
+
+		find_sda=1
+		org_data=`echo $line | awk '{print $4}'`
+
+		if [ "$org_data" = "starting" ] ;then
+			iso_path_dir=`cat $USB_MNT_TMP | awk '{print $2}'`
+			iso_path=`printf "%s/$iso_name" "$iso_path_dir" `
+			current_size=`du -m $iso_path`
+			persent=`echo "$current_size" | awk '{printf("Mounting///%0.1d",$1/128*100)}'` 
+			echo $persent
+
+		fi
+	
+	
+		if [ "$org_data" = "end" ] ;then
+			echo "Mounted///0"
+		fi
+
+		if [ "$org_data" = "ready" ] ;then
+			echo "Mounted///0"
+		fi
+
+
+		if [ "$org_data" = "needspace" ] ;then
+			echo "NULL///0"
+			exit
+
+		fi
+		
+		#echo "NULL///0"
+
+		#exit
+
+done
+
+if [ "$find_sda" -eq "0" ] ;then
+			echo "NULL///0"
+fi

@@ -1,0 +1,125 @@
+#!/bin/sh
+
+dev_usb_state_file="/tmp/usbstate"
+#set -x
+check_mounted_info() {
+num="1"
+cur_line=`printf "%sp" "$num"`
+
+while [ "null" = "null" ]; do
+line=`sed -n $cur_line $dev_usb_state_file`
+
+		let num=$num+1
+		cur_line=`printf "%sp" "$num"`
+
+		manufact=`echo $line | awk '{print $1}'`
+
+		if [ -z $manufact ]; then
+		   break	
+		fi
+
+
+		sdxx=`echo $line | awk '{print $2}'`
+		sd_size=`echo $line | awk '{print $3}'`
+		org_data=`echo $line | awk '{print $4}'`
+		mount_state=`echo $line | awk '{print $5}'`
+
+		if [ "$org_data" = "end" ] ;then
+			org_data="DATA"
+		fi
+
+		if [ "$org_data" = "ready" ] ;then
+			org_data="DATA"
+		fi
+
+
+		if [ "$org_data" = "needspace" ] ;then
+			org_data="NeedDiskSpace"
+		fi
+		
+		if [ ! -z "$manufact" ] ;then
+
+			if [ ! -z "$mount_state" ] ;then
+				ret_info=`printf "%s///%s///%s///%s///%s/////" "$manufact" "$sdxx" "$sd_size" "$org_data" "$mount_state"`
+		   		echo $ret_info
+			elif [ "$org_data" = "starting" ] ;then
+				ret_info=`printf "%s///%s///%s///%s///%s" "$manufact" "$sdxx" "$sd_size" "$org_data" "Unmounted"`
+		   		echo $ret_info
+			else
+				echo "NULL"
+			fi
+		 
+		fi
+	done
+}
+
+
+
+check_mounted_num() {
+     
+        num="1"
+	cur_line=`printf "%sp" "$num"`
+
+	while [ "null" = "null" ]; do
+	line=`sed -n $cur_line $dev_usb_state_file`
+
+	let num=$num+1
+	cur_line=`printf "%sp" "$num"`
+
+
+	manufact=`echo $line | awk '{print $1}'`
+
+		if [ -z $manufact ]; then
+		   break	
+		fi
+	mount_state=`echo $line | awk '{print $5}'`
+
+	if [ "$mount_state" = "Mounted" ] ;then
+				
+		    let total_num1=$total_num1+1
+		     total_num=$total_num1
+			
+
+	fi
+	
+   done
+	echo $total_num
+
+}
+
+USB_MNT_TMP="/tmp/usbdir"
+DevName="dev"
+check_opt_state(){
+	
+	OptMount=`cat $USB_MNT_TMP |  awk '{print $1}' | grep $DevName 2>/dev/null`
+
+	if [ -z $OptMount ] ;then
+		echo "NULL"
+	else
+		echo "Mounted"
+	fi
+
+}
+param=$1
+total_num=0
+if [ ! -s $dev_usb_state_file ]; then
+	echo "NULL"
+	exit 0
+fi
+
+    case "$param" in
+        info)
+		   check_mounted_info
+		  ;;
+	 num)
+		   check_mounted_num
+		  ;;
+	 opt)
+		   check_opt_state
+		  ;;
+
+    esac
+ 
+
+
+

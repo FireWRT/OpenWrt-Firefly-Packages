@@ -1,0 +1,36 @@
+#!/bin/sh
+
+usage() {
+	echo "ledctrl on"
+	echo "ledctrl off"
+	echo "ledctrl fade <fade_on> <fade_off>"
+	echo "	<fade_on>: 0~15, default is 4"
+	echo "	<fade_off>: 0~15, default is 4"
+}
+
+case "$1" in
+	on)
+		i2ccmd addr 0x45
+		i2ccmd w 3 0x0 0x7f0000
+		i2ccmd addr 0
+	;;
+	off)
+		i2ccmd addr 0x45
+		i2ccmd w 3 0 0x0
+		i2ccmd addr 0
+	;;
+	fade)
+		if [ -z $2 -o -z $3 ]; then
+			usage
+			exit
+		fi
+		i2ccmd addr 0x45
+		i2ccmd w 1 0x3 0x${2}${2}
+		i2ccmd w 1 0x5 0x${3}${3}
+		i2ccmd w 3 0x0 0x7f7f7f
+		i2ccmd addr 0
+	;;
+	*)
+	usage
+	;;
+esac

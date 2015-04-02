@@ -1,0 +1,58 @@
+#!/bin/sh
+#set -x
+
+#功能： 1、用ifconfig 获取出br-lan网卡的新IP
+#	   	2、将/etc/hosts 文件中的IP 替换为第一步获取的新IP
+#		3、替换方法为，先从/etc/hosts 文件中分别找到xyun.info 和xyun.co 的行数，然后在
+#			当前行插入一个新行，新行内容为192.168.99.1 xyun.info 或者 192.168.99.1 xyun.co 
+#			最后再删除插入行的下一行
+
+
+#变量
+ip_new=""                               #用于存放新的IP地址
+linenum_xyuninfo=""     #用于存放xyun.info 所在的行的行号
+linenum_xyunco=""       #用于存放xyun.co 所在的行的行号
+linenum_okgo=""       #用于存放ok.go 所在的行的行号
+linenum_next=""			#用于存放要删除行的内容
+num=
+#readonly filepath="/etc/hosts"  #配置文件的地址
+filepath="/etc/hosts"  #配置文件的地址
+
+#新IP为调用者传进来的参数
+ip_new=`echo $1 |awk -F " " '{printf $1}'`
+if [ "${ip_new}" == "" ];then
+	exit 1
+fi
+#获取xyun.info所在的行号
+linenum_xyuninfo=`sed = ${filepath}|sed 'N;s/\n/:/' |grep "xyun.info" | awk -F ":" '{printf $1}'`
+num=`printf "%d" ${linenum_xyuninfo}`
+linenum_next=`expr ${num} + 1`
+
+#在当前行插入一个新行，内容为$ip_new xyun.info 
+sed -ri ''${linenum_xyuninfo}'i\'${ip_new}' xyun.info' ${filepath}
+
+#删除插入后的下一行
+sed -ri ''${linenum_next}'d' ${filepath}
+
+#获取xyun.co所在的行号
+linenum_xyunco=`sed = ${filepath}|sed 'N;s/\n/:/' |grep "xyun.co" | awk -F ":" '{printf $1}'`
+num=`printf "%d" ${linenum_xyunco}`
+linenum_next=`expr ${num} + 1`
+
+#在当前行插入一个新行，内容为$ip_new xyun.co
+sed -ri ''${linenum_xyunco}'i\'${ip_new}' xyun.co' ${filepath}
+
+#删除插入后的下一行
+sed -ri ''${linenum_next}'d' ${filepath}
+
+#获取ok.go所在的行号
+linenum_okgo=`sed = ${filepath}|sed 'N;s/\n/:/' |grep "ok.go" | awk -F ":" '{printf $1}'`
+num=`printf "%d" ${linenum_okgo}`
+linenum_next=`expr ${num} + 1`
+
+#在当前行插入一个新行，内容为$ip_new ok.go
+sed -ri ''${linenum_xyunco}'i\'${ip_new}' ok.go' ${filepath}
+
+#删除插入后的下一行
+sed -ri ''${linenum_next}'d' ${filepath}
+exit 0

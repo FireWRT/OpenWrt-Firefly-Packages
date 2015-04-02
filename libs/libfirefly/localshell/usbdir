@@ -1,0 +1,34 @@
+#!/bin/sh
+TMP_USB_DIR="/tmp/usbdir"
+
+ergodic(){
+	SAVEIFS=$IFS
+	IFS=$(echo -en "\n\b")
+	for file in ` ls $1`
+	do
+		if [ -d $1"/"$file ]; then
+			echo -n "$file/||||"
+		else
+			echo  -n "$file||||"
+		fi
+	done
+	IFS=$SAVEIFS
+}
+
+for line in `cat ${TMP_USB_DIR} |awk '{print $2}'`  
+do
+	USB_DIR=$line
+
+	if [ $1 = "BASE" ]; then
+		ergodic $USB_DIR
+	elif [ $1 = "DIR" ]; then
+		ergodic ${USB_DIR}/$2
+	elif [ $1 = "ROOTER" ]; then
+		echo $line
+	fi
+
+	break;
+done
+
+
+exit

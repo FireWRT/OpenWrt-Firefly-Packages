@@ -1,0 +1,331 @@
+#!/bin/sh
+ 
+# Copyright (C) 2009 OpenWrt.org  (C) 2010 OpenWrt.org.cn
+#set -x
+
+del_samba_index="0"
+samba_config() {
+	
+ samba_cmd=$1 
+
+ case "$samba_cmd" in
+        add)
+
+		samba_dev=$2 
+ 		samba_path=$3 
+		uci add samba samba
+		uci set samba.@samba[-1].name=xRouter
+		uci set samba.@samba[-1].workgroup=WORKGROUP
+		uci set samba.@samba[-1].description=xRouter
+		uci set samba.@samba[-1].homes=1
+		uci add samba sambashare
+		uci set samba.@sambashare[-1].name=xRouter_MNT_$samba_dev
+		uci set samba.@sambashare[-1].path=$samba_path
+		uci set samba.@sambashare[-1].read_only=no
+		uci set samba.@sambashare[-1].guest_ok=yes
+		uci set samba.@sambashare[-1].create_mask=0700
+		uci set samba.@sambashare[-1].dir_mask=0700
+ 		uci commit samba 
+	 ;;
+	del)	
+		samba_index=$2 
+
+		uci delete samba.@samba[$samba_index]
+		uci delete samba.@sambashare[$samba_index]
+		uci commit samba
+	 ;;
+	search)	
+		samba_path=$2 
+		del_samba_index=`uci show samba | grep $samba_path | awk -F "]" '{print $1}' | awk -F "[" '{print $2}'`
+		
+	 ;;
+
+    esac
+
+}
+
+start_SafeAcc() {
+	if [ -f /opt/etc/init.d/SafeAcc ]; then
+		/opt/etc/init.d/SafeAcc start
+	fi
+}
+stop_SafeAcc() {
+        if [ -f /opt/etc/init.d/SafeAcc ]; then
+		/opt/etc/init.d/SafeAcc stop
+	fi
+}
+
+start_config() {
+        if [ -f /usr/local/xcloud/bin/searchSharePath.sh ]; then
+		/usr/local/xcloud/bin/searchSharePath.sh $1
+	fi
+	samba_config add $1 /mnt/$1
+}
+start_samba() {
+        if [ -f /etc/init.d/samba ]; then
+		/etc/init.d/samba start
+	fi
+}
+stop_samba() {
+        if [ -f /etc/init.d/samba ]; then
+		/etc/init.d/samba stop
+	fi
+}
+start_gpio() {
+
+	capbility=`/usr/local/localshell/getcapability`
+
+	if [ "$capbility" = "RY-02" ]; then
+		gpioctl dirout 53
+	else
+		gpioctl dirout 39 && gpioctl set 39
+	fi
+									
+										
+}
+stop_gpio() {
+		
+	check_mount=`mount | grep /dev/sd`
+
+	if [ ! -z "$check_mount" ]; then
+		return
+	fi
+
+								
+	capbility=`/usr/local/localshell/getcapability`
+										
+	if [ "$capbility" = "RY-02" ]; then
+		gpioctl dirin 53
+	else
+		gpioctl dirin 39
+	fi
+
+}
+start_all() {
+	start_SafeAcc 1>/dev/null 2>&1
+	start_samba  1>/dev/null 2>&1
+	ctl_plugin start 1>/dev/null 2>&1
+}
+
+delete_samba_share() {
+	samba_config search /mnt/$1
+	samba_config del $del_samba_index
+}
+stop_all() {
+	/etc/init.d/xcloud stop 1>/dev/null 2>&1
+	stop_SafeAcc 1>/dev/null 2>&1	
+	ctl_plugin stop 1>/dev/null 2>&1	
+	delete_samba_share $1	
+}
+
+kill_all() {
+	PIDS=`fuser -m $1`
+
+	 if [ ! -z "$PIDS" ];then
+		
+		for line in $PIDS
+		do
+			if [ "$line" -eq "1" ]; then
+				break
+			fi
+  			kill -9 $line 
+		done
+ 	fi
+}
+
+Path="/opt/app/appinstalled/"
+AutoRun_Udisk="2"
+
+ctl_plugin() {
+		AllFile=`ls $Path`
+		for EachFile in ${AllFile}
+		do
+			OneFilePath=`printf "%s%s" "$Path" "$EachFile"`
+			AutoRun=`cat ${OneFilePath} | grep "plugin_Autorun" |awk -F ":" '{print $2}' | awk -F " " '{print $1}'`
+			 if  [ "$AutoRun" = "$AutoRun_Udisk" ]; then
+				AppInstallPath=`cat ${OneFilePath} | grep "plugin_IntallPath"  |awk -F ":" '{print $2}' | awk -F " " '{print $1}'`
+				AppShellCtl=`printf "%sappshell %s" "$AppInstallPath" "$1"`
+				$AppShellCtl
+ 
+			 fi
+		done
+
+}
+Parameter_num=$#
+USB_MNT_TMP="/tmp/usbdir"
+USB_PATITION_TMP="/tmp/usbdev"
+dev_usb_state_file="/tmp/usbstate"
+MountedDev="/tmp/usbmounted"
+
+local dev_detcet=0
+
+if [ ${Parameter_num} -eq 2 ];then
+
+device=$2 
+
+ case "$1" in
+        remove)
+	
+		dev_detcet=0
+		num="1"
+		cur_line=`printf "%sp" "$num"`
+
+		while [ "null" = "null" ]; do
+		line=`sed -n $cur_line /tmp/usbdev`
+
+		let num=$num+1
+		cur_line=`printf "%sp" "$num"`
+
+		if [ -z "$line" ] ;then
+			break
+		fi
+		
+		dev_sdxx=`echo $line | grep $device`
+
+		if [ ! -z "$dev_sdxx" ] ;then
+
+		dev_detcet=1
+		sdxx=`echo $line | awk -F ":" '{print $2}'`
+		stop_samba
+	
+		devicedir=`cat ${USB_MNT_TMP} | grep $sdxx 2>/dev/null`
+		if [ "$devicedir" =  "" ] ;then
+			mount_check=$(mount | grep -w $sdxx )
+			if [ ! -z "$mount_check" ]; then
+
+				kill_all /mnt/$sdxx 1>/dev/null 2>&1
+
+				if [ -f /dev/${sdxx}/swapfile ]; then
+				swapoff /dev/${sdxx}/swapfile
+				fi
+
+				umount_device_ret=$(umount /mnt/$sdxx 2>&1 ) 
+
+				umount_device_ret_erro=`echo $umount_device_ret | grep "can't"`
+		
+				if [ -z "$umount_device_ret_erro" ];then
+					delete_samba_share ${sdxx}
+					unmounted_dev_xx=`printf "%s %s" "$unmounted_dev_xx" "$sdxx"`
+				fi
+			 else
+				unmounted_dev_xx=`printf "%s %s" "$unmounted_dev_xx" "$sdxx"`
+		  	 fi
+		  else
+	
+		  stop_all ${sdxx}  
+
+	 	  kill_all /mnt/$sdxx 1>/dev/null 2>&1
+		  kill_all /opt 1>/dev/null 2>&1
+
+		  if [ -f /dev/${sdxx}/swapfile ]; then
+			swapoff /dev/${sdxx}/swapfile
+		  fi
+		
+		  	check_opt=`mount | grep /opt`
+
+		  if [ ! -z "$check_opt" ];then
+				
+				umount_ret=$(umount /opt 2>&1)
+
+		 		 umount_ret_erro=`echo $umount_ret | grep can't `	
+
+		 		  if [ -z "$umount_ret_erro" ];then
+		
+		  			  losetup_ret=$(losetup -d /dev/loop0 2>&1)
+
+		   			  losetup_ret_erro=`echo $losetup_ret | grep failed `
+		
+		    		 	  if [ ! -z "$losetup_ret_erro" ]; then
+						start_all $sdxx 
+					 	echo "Error"
+					  else 
+						# umount /opt success 
+						rm -f $USB_MNT_TMP
+		     		 	  fi ### if [ -z "$losetup_ret_erro" ];then
+				 else
+				        start_all $sdxx
+					echo "Error" 
+
+		     	         fi
+				
+		  fi	### if [ -z "$check_opt" ];then	
+
+		  	check_sdxx=`mount | grep -w /mnt/$sdxx`
+
+			if [ ! -z "$check_sdxx" ];then
+				
+				umount_device_ret=$(umount /mnt/$sdxx 2>&1 )
+
+		  				umount_device_ret_erro=`echo $umount_device_ret | grep "can't"`
+			
+		 				 if [ -z "$umount_device_ret_erro" ];then
+           	  	    				rm -r /mnt/$sdxx 1>/dev/null 2>&1
+           	 	    				rm -r /opt 1>/dev/null 2>&1
+		 	  				
+ 		 	   				/etc/init.d/xcloud start  1>/dev/null 2>&1
+		  	   
+			    				unmounted_dev_xx=`printf "%s %s" "$unmounted_dev_xx" "$sdxx"`
+		 				 else
+		 	  			 	start_all $sdxx
+		 	   				echo "Error"
+		 				 fi
+			fi
+		 
+		 fi   ###if [ "$devicedir" =  "" ] ;then
+			
+		fi	###if [ ! -z "$dev_sdxx" ]
+			
+		   done
+			 if [  "$dev_detcet" -eq "0" ] ;then
+				echo "Dev Error"
+				return
+			 fi
+			 unmounted_ret=0
+
+			 if [ ! -z "$unmounted_dev_xx" ] ;then
+
+			  for sdxx in $unmounted_dev_xx
+			 do
+
+				#echo "succ sdxx =$sdxx device =$device"
+
+				if [ -z "$sdxx" ] ;then
+					break
+				fi
+
+				
+				   rm -r /mnt/$sdxx 1>/dev/null 2>&1
+				   sed -i "/${sdxx}/d" /tmp/usbdev
+				   sed -i "/${sdxx}/d" $MountedDev
+
+				   mount_check_all=`mount | grep $device`
+
+			           if [ -z "$mount_check_all" ]; then
+				    unmounted_ret=1
+				     stop_gpio 1>/dev/null 2>&1
+				    sed -i "/${device}/d" $dev_usb_state_file
+
+				    fi
+					check_all_mount=`cat /tmp/usbdev 2>/dev/null ` 
+		
+				    if [ ! -z "$check_all_mount" ]; then
+
+					start_samba $device  1>/dev/null 2>&1
+
+				    fi
+					
+			      done
+
+				if [  "$unmounted_ret" -eq "1" ] ;then
+				 	echo "Success"			
+				else
+					echo "Error"
+				 fi
+
+					return
+			  fi
+               ;;
+    esac
+else
+echo "Parameter Err"
+fi

@@ -1,0 +1,605 @@
+#!/bin/sh 
+#set -x
+
+parameter_count=$#
+parameter_first=$1
+parameter_second=$2
+config_file="/etc/config/fpkg"
+application_unzip_tmp_path="/tmp/fpkg/"
+list_path=${application_path}"fpkg.list"
+lock_file="/tmp/fpkg.lock"
+usbmount="/tmp/usbmounted"
+
+#插件相关信息
+plugin_ID=
+plugin_Name=
+plugin_VersionName=
+plugin_VersionCode=
+plugin_MinSDKVersion=
+plugin_TargetSDKVersion=
+plugin_XPKGVersion=
+plugin_IntallPath=
+plugin_MD5=
+plugin_Author=
+plugin_Largeicon=
+plugin_Smallicon=
+plugin_type=
+plugin_Autorun=0
+plugin_Position=
+plugin_Description=
+default_Largeicon="/opt/app/icon/large.png"
+default_Smallicon="/opt/app/icon/small.png"
+icon_Collection="/opt/app/icon/"
+
+
+
+#检查参数是否正确
+check_parameter()
+{
+	if [ ${parameter_count} -ne 2 ];then
+		echo "Fail:Parameter Error!"
+		exit 1
+	fi
+}
+
+#初始化
+fpkg_init()
+{
+	touch ${config_file}
+	if [ ! -d "${application_unzip_tmp_path}" ];then
+		mkdir -p ${application_unzip_tmp_path}
+	fi
+}
+
+#lock
+fpkg_lock()
+{
+	touch ${lock_file}
+}
+
+#unlick
+fpkg_unlock()
+{
+	rm ${lock_file}
+}
+
+#判断是不是标准的opwnert安装包
+fpkg_verified_openwrt_package()
+{
+	local package=${parameter_second}
+	local tmp=`tar -tzf ${package} | grep debian-binary` 
+	if [ "${tmp}x" != "x" ];then
+		if [ "${package##*.}" == "ipk" ];then
+			plugin_type="openwrt"
+		fi
+	fi
+}
+
+#判断是不是如意云插件包
+fpkg_verified_xcloud_pacakge()
+{
+	local package=${parameter_second}
+	local tmp=`tar -tzf ${package} | grep appinfo`
+	if [ "${tmp}x" != "x" ];then
+		if [ "${package##*.}" == "xipk" ];then
+			plugin_type="xcloud"
+		fi
+	fi
+}
+
+#判断是不是标准的firefly安装包
+fpkg_verified_firefly_pacakge()
+{
+	local package=${parameter_second}
+	local tmp=`tar -tzf ${package} | grep appcontrol`
+	if [ "${tmp}x" != "x" ];then
+		if [ "${package##*.}" == "ffy" ];then
+			plugin_type="firefly"
+		fi
+	fi
+}
+
+#检查安装包是否正确
+fpkg_check()
+{
+	#过滤规则
+	fpkg_verified_openwrt_package
+    fpkg_verified_firefly_pacakge
+	fpkg_verified_xcloud_pacakge	
+}
+
+#安装openwrt标准插件
+fpkg_install_openwrt_package()
+{
+	local package=${parameter_second}
+	local current_dir=${PWD}
+	local value
+	tar xzf ${package} -C ${application_unzip_tmp_path} 
+	tar xzf ${application_unzip_tmp_path}/control.tar.gz -C ${application_unzip_tmp_path} 
+	#获取配置文件各项参数 
+	while read line
+	do
+		#plugin_Name
+		value=`echo $line | grep Package`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#Package} | tr -d " " | tr -d ":"`
+			plugin_Name=$value
+		fi
+		#plugin_VersionName
+		value=`echo $line | grep Version`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#Version} | tr -d " " | tr -d ":"`
+			plugin_VersionName=$value
+		fi
+	done < ${application_unzip_tmp_path}control
+	plugin_Largeicon=${default_Largeicon}
+	plugin_Smallicon=${default_Smallicon}
+
+	#install
+	fpkg_check_config && opkg install ${package} && fpkg_save_config
+	
+	#clean
+	rm ${application_unzip_tmp_path}/* -rf
+}
+
+#get a file md5 value
+fpkg_get_md5()
+{
+    echo `ls $1 | xargs md5sum | awk -F " " '{print $1}'`
+}
+
+#get udisk real path
+fpkg_udisk_name_to_path()
+{
+    local path=$*
+    local udisk
+    if [ "${path}x" == "Internal Storagex" ];then
+        echo "/opt"
+    fi
+    if [ -f ${usbmount} ];then
+        udisk=`cat "${usbmount}" | grep "${path}" |  awk -F "//" '{print $1}'`
+
+        if [ ! -z "$udisk" ];then
+            echo "/mnt/"${udisk}
+        fi
+    fi
+
+}
+
+#change install path\
+# $1 new path
+fpkg_change_install_path()
+{
+    local old_path="\/opt"
+    local new_path=$1
+    new_path=`echo $new_path | sed 's#\/#\\\/#g'`
+    eval sed 's/${old_path}/${new_path}/g' ./appshell > ./appshellbk
+    mv ./appshellbk ./appshell
+}
+
+# Save the link to a file
+# exec while the app uninstall
+append_remove_link_script()
+{
+    local remove_script_path=${plugin_IntallPath}"/uninstall.sh"
+    local link_path=$1
+    echo "rm "${link_path} >> ${remove_script_path}
+}
+
+#
+firefly_install_fail()
+{
+    local tips=$1
+    local remove_script_path=${plugin_IntallPath}"/uninstall.sh"
+    [ ! -z ${tips} ] && echo ${tips}
+    sh ${remove_script_path}
+    rm ${remove_script_path}
+    exit 1
+}
+
+#create link
+create_link()
+{
+    local path=$1
+    local link_folder_name=`basename ${path}`
+    local link_folder="/usr/lib/lua/luci/"${link_folder_name}
+    for line in $(ls -1 ${path})
+    do
+        if [ -d ${path}/$line ];then
+            if [ ! -e ${link_folder}/$line ];then
+                ln -s ${path}/$line ${link_folder}/$line
+                append_remove_link_script ${link_folder}/$line
+            else
+                firefly_install_fail "Fail:".${line}."[link] is already exist."
+            fi
+        fi
+    done
+}
+
+create_links()
+{
+    local path=$1
+
+    #model
+    create_link $path/model
+    #view
+    create_link $path/view
+    #controller
+    create_link $path/controller
+}
+
+#安装firefly插件
+fpkg_install_firefly_package()
+{
+    local package=${parameter_second}
+    local appinfo_path=`tar -tzf ${package} | grep appinfo`
+    local key_path=`tar -tzf ${package} | grep key`
+    local app_path=${appinfo_path%/*}
+    local appcontrol_path=${app_path}/appcontrol
+    
+    #just unzip two file
+    tar xzf ${package} ${appinfo_path} -C ${application_unzip_tmp_path} 
+    tar xzf ${package} ${key_path} -C ${application_unzip_tmp_path} 
+
+    appinfo_path=${application_unzip_tmp_path}${appinfo_path}
+    key_path=${application_unzip_tmp_path}${key_path}
+
+    #cd ${application_unzip_tmp_path}
+    
+    #plugin_Name
+    value=`cat ${appinfo_path} | grep package_name=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_name} | tr -d " " | tr -d "="`
+		plugin_Name=$value
+	fi
+
+	#plugin_VersionName
+	value=`cat ${appinfo_path} | grep package_version=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_version} | tr -d " " | tr -d "="`
+		plugin_VersionName=$value
+	fi
+
+	#plugin_VersionCode
+	value=`cat ${appinfo_path} | grep package_version_code=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_version_code} | tr -d " " | tr -d "="`
+		plugin_VersionCode=$value
+	fi
+
+    #plugin_Author
+	value=`cat ${appinfo_path} | grep package_author=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_author} | tr -d " " | tr -d "="`
+		plugin_Author=$value
+	fi
+
+    #plugin_Description
+    value=`cat ${appinfo_path} | grep package_description=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_description} | tr -d " " | tr -d "="`
+		plugin_Description=$value
+	fi
+
+    #plugin_MinSDKVersion
+    value=`cat ${appinfo_path} | grep package_sdk_min_version=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_sdk_min_version} | tr -d " " | tr -d "="`
+		plugin_MinSDKVersion=$value
+	fi
+
+    #plugin_TargetSDKVersion
+    value=`cat ${appinfo_path} | grep package_sdk_target_version=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_sdk_target_version} | tr -d " " | tr -d "="`
+		plugin_TargetSDKVersion=$value
+	fi
+
+    #plugin_plugin_Autorun
+    value=`cat ${appinfo_path} | grep package_auto_run=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_auto_run} | tr -d " " | tr -d "="`
+		plugin_plugin_Autorun=$value
+	fi
+
+    #plugin_Largeicon
+    value=`cat ${appinfo_path} | grep package_icon=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_icon} | tr -d " " | tr -d "="`
+		plugin_Largeicon=$value
+	fi
+    
+    #plugin_ID
+	value=`cat ${key_path} | grep package_id=`
+	if [ "${value}x" != "x" ];then
+		value=`echo ${value#package_id} | tr -d " " | tr -d "="`
+		plugin_ID=$value
+	fi
+
+    plugin_Position=`uci get fpkg.install_path.name`
+    local plugin_install_path=`fpkg_udisk_name_to_path ${plugin_Position}`"/app"
+    plugin_IntallPath=${plugin_install_path}/${app_path}
+    
+    #执行安装脚本
+	fpkg_check_config
+    tar xzf ${package} -C ${plugin_install_path}
+    create_links ${plugin_IntallPath}/luci
+
+    #save logo path
+    plugin_Largeicon=${plugin_IntallPath}/${plugin_Largeicon}
+    plugin_Smallicon=${plugin_IntallPath}/${plugin_Largeicon}
+    if [ ! -f "${plugin_Largeicon}" ];then
+		plugin_Largeicon=${default_Largeicon}
+	fi
+	if [ ! -f "${plugin_Smallicon}" ];then
+		plugin_Smallicon=${default_Smallicon}
+	fi	
+    
+    #保存配置
+	fpkg_save_config
+	
+	#clean
+	rm ${application_unzip_tmp_path}/* -rf
+}
+
+#安装如意云插件
+fpkg_install_xcloud_package()
+{
+	local package=${parameter_second}
+	local value
+	tar xzf ${package} -C ${application_unzip_tmp_path} 
+	cd ${application_unzip_tmp_path}
+	local dir_name=`ls`
+	cd ${dir_name}
+	#获取配置文件各项参数
+	while read line
+	do
+		#plugin_ID
+		value=`echo $line | grep plugin_ID`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_ID} | tr -d " " | tr -d ":"`
+			plugin_ID=$value
+		fi
+
+		#plugin_Name
+		value=`echo $line | grep plugin_Name`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_Name} | tr -d " " | tr -d ":"`
+			plugin_Name=$value
+		fi
+
+		#plugin_VersionName
+		value=`echo $line | grep plugin_VersionName`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_VersionName} | tr -d " " | tr -d ":"`
+			plugin_VersionName=$value
+		fi
+
+		#plugin_VersionCode
+		value=`echo $line | grep plugin_VersionCode`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_VersionCode} | tr -d " " | tr -d ":"`
+			plugin_VersionCode=$value
+		fi
+
+		#plugin_XPKGVersion
+		value=`echo $line | grep plugin_XPKGVersion`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_XPKGVersion} | tr -d " " | tr -d ":"`
+			plugin_XPKGVersion=$value
+		fi
+
+		#plugin_IntallPath
+		value=`echo $line | grep plugin_IntallPath`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_IntallPath} | tr -d " " | tr -d ":"`
+			plugin_IntallPath=$value
+            
+		fi
+
+		#plugin_Author
+		value=`echo $line | grep plugin_Author`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_Author} | tr -d " " | tr -d ":"`
+			plugin_Author=$value
+		fi
+		
+		#plugin_MD5
+		value=`echo $line | grep plugin_MD5`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_MD5} | tr -d " " | tr -d ":"`
+			plugin_MD5=$value
+		fi
+
+		#plugin_Largeicon
+		value=`echo $line | grep plugin_Largeicon`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_Largeicon} | tr -d " " | tr -d ":"`
+			plugin_Largeicon=$value
+		fi
+		
+		#plugin_Smallicon
+		value=`echo $line | grep plugin_Smallicon`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_Smallicon} | tr -d " " | tr -d ":"`
+			plugin_Smallicon=$value
+		fi
+
+		#plugin_Autorun
+		value=`echo $line | grep plugin_Autorun`
+		if [ "${value}x" != "x" ];then
+			value=`echo ${value#plugin_Autorun} | tr -d " " | tr -d ":"`
+			plugin_Autorun=$value
+		fi
+
+	done < ./appinfo
+	
+	#校验
+	local md5=`ls *.ipk | xargs md5sum | awk -F " " '{print $1}'`
+	if [ "${md5}x" != "${plugin_MD5}x" ];then
+		echo "Fail:Package is broken!"
+		exit 1
+	fi
+
+	plugin_Position=`uci get fpkg.install_path.name`
+    # Replace install Script
+    local plugin_install_path=`fpkg_udisk_name_to_path ${plugin_Position}`
+    fpkg_change_install_path  ${plugin_install_path}   
+
+	#执行安装脚本
+	fpkg_check_config 
+	local rv=`sh ./appshell install`
+	local success=`echo $rv | grep Success`
+	if [ "${success}x" == "x" ];then
+		local fail=`echo $rv | grep "Install Error"`
+		if [ "${fail}x" != "x" ];then
+			echo "Fail:Install Error"
+			sh ./appshell uninstall
+			exit 1
+		fi
+	fi
+
+    plugin_Largeicon=${plugin_install_path}${plugin_Largeicon#*opt}
+    plugin_Smallicon=${plugin_install_path}${plugin_Smallicon#*opt}
+
+	if [ ! -f "${plugin_Largeicon}" ];then
+		plugin_Largeicon=${default_Largeicon}
+	fi
+	if [ ! -f "${plugin_Smallicon}" ];then
+		plugin_Smallicon=${default_Smallicon}
+	fi	
+
+    # Replace install Script Again
+    cd ${plugin_install_path}${plugin_IntallPath#*opt}
+    fpkg_change_install_path  ${plugin_install_path}   
+
+	#保存配置
+	fpkg_save_config
+	
+	#clean
+	rm ${application_unzip_tmp_path}/* -rf
+}
+
+#panduan
+fpkg_check_config()
+{
+	local config_plugin_name=`basename ${parameter_second} | awk -F "." '{print $1}'`
+	local is_install=`uci show fpkg | grep "${config_plugin_name}=globals"`
+	if [ "${is_install}x" != "x" ];then
+		echo "Fail:${plugin_Name} had installed !"
+		exit 1
+	fi
+}
+
+#get file name extension
+fpkg_get_file_extension()
+{
+    filename=$(basename "$1")
+    extension="${filename##*.}"
+    echo ${extension}
+}
+
+#保存配置文件
+fpkg_save_config()
+{
+	local config_plugin_name=`basename ${parameter_second} | awk -F "." '{print $1}'`
+
+    #copy the icon to the inst Internal Storage
+    local small_icon_new_name=${default_Largeicon}
+    local large_icon_new_name=${default_Smallicon}
+    if [ ${plugin_Largeicon}"x" != ${default_Largeicon}"x" ];then
+        local md5=`fpkg_get_md5 ${plugin_Largeicon}`
+        local extension=`fpkg_get_file_extension ${plugin_Largeicon}`
+        large_icon_new_name=${icon_Collection}${md5}"."${extension}
+        cp ${plugin_Largeicon} ${large_icon_new_name}
+    fi
+    if [ ${plugin_Smallicon}"x" != ${default_Smallicon}"x" ];then
+        local md5=`fpkg_get_md5 ${plugin_Smallicon}`
+        local extension=`fpkg_get_file_extension ${plugin_Smallicon}`
+        small_icon_new_name=${icon_Collection}${md5}"."${extension}
+        cp ${plugin_Smallicon} ${small_icon_new_name}
+    fi
+
+	uci set fpkg.${config_plugin_name}=globals
+	uci set fpkg.${config_plugin_name}.plugin_ID=${plugin_ID}
+	uci set fpkg.${config_plugin_name}.plugin_Name=${plugin_Name}
+	uci set fpkg.${config_plugin_name}.plugin_VersionName=${plugin_VersionName}
+	uci set fpkg.${config_plugin_name}.plugin_VersionCode=${plugin_VersionCode}
+	uci set fpkg.${config_plugin_name}.plugin_IntallPath=${plugin_IntallPath}
+	uci set fpkg.${config_plugin_name}.plugin_Author=${plugin_Author}
+	uci set fpkg.${config_plugin_name}.plugin_Largeicon=${large_icon_new_name}
+	uci set fpkg.${config_plugin_name}.plugin_Smallicon=${small_icon_new_name}
+	uci set fpkg.${config_plugin_name}.plugin_Type=${plugin_type}
+	uci set fpkg.${config_plugin_name}.plugin_Autorun=${plugin_Autorun}
+	uci set fpkg.${config_plugin_name}.plugin_Position="${plugin_Position}"
+	uci commit
+}
+
+#安装
+fpkg_install()
+{
+	local type
+	fpkg_check
+	type=$plugin_type
+	if [ "${type}x" == "xcloudx" ];then
+		fpkg_install_xcloud_package
+    elif [ "${type}x" == "fireflyx" ];then
+		fpkg_install_firefly_package
+	elif [ "${type}x" == "openwrtx" ];then
+		fpkg_install_openwrt_package
+	fi
+}
+
+#删除配置
+fpkg_remove_config()
+{
+	local p1=$1
+	local config_plugin_name=`basename $p1 | awk -F "." '{print $1}'`
+	uci delete fpkg.${config_plugin_name}
+	uci commit
+}
+
+#卸载
+fpkg_remove()
+{
+	local plugin=`basename ${parameter_second} | awk -F "." '{print $1}'`
+	local type=`uci get fpkg.${plugin}.plugin_Type`	
+	if [ "${type}x" == "xcloudx" ];then
+        local plugin_IntallPath=`/usr/local/firefly-api/get_app_install_path $plugin`
+		sh ${plugin_IntallPath}appshell uninstall
+    elif [ "${type}x" == "fireflyx" ];then
+		local plugin_IntallPath=`/usr/local/firefly-api/get_app_install_path $plugin`
+		sh ${plugin_IntallPath}/uninstall.sh
+        rm ${plugin_IntallPath} -rf
+	elif [ "${type}x" == "openwrtx" ];then
+		opkg remove ${plugin}
+	else
+		exit 1
+	fi
+	
+	fpkg_remove_config $plugin
+}
+
+main()
+{
+	check_parameter
+	fpkg_init
+	if [ "${parameter_first}x" == "installx" ];then
+		fpkg_install
+	elif [ "${parameter_first}x" == "removex" ];then
+		fpkg_remove
+	elif [ "${parameter_first}x" == "debugx" ];then
+	    local config_plugin_name=`basename ${parameter_second} | awk -F "." '{print $1}'`
+	    local is_install=`uci show fpkg | grep "${config_plugin_name}=globals"`
+	    if [ "${is_install}x" != "x" ];then
+		    fpkg_remove
+	    fi
+	    fpkg_install
+            sh ${plugin_IntallPath}/appcontrol start
+	else
+		exit 1
+	fi
+}
+
+main
+

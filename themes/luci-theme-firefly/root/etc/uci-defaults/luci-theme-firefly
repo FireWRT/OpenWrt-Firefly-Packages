@@ -1,0 +1,7 @@
+#!/bin/sh
+uci batch <<-EOF
+        set luci.themes.FireFly=/luci-static/firefly
+	set luci.main.mediaurlbase=/luci-static/firefly
+        commit luci
+EOF
+exit 0

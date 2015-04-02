@@ -1,0 +1,52 @@
+<%+header%>
+<script type="text/javascript" src="/luci-static/resources/jquery-1.7.1.js"></script>
+<script type="text/javascript" src="/luci-static/resources/fireinstall.js"></script>
+<link rel="stylesheet" href="/luci-static/resources/fireinstall.css">
+<input type="hidden" value="<%=stok%>" id="stok">
+<h2>
+        <a id="content" class="content"><%=translate("FireFly App Manager")%></a>
+        <div class="cbi-map-descr"><%=translate("Manage the application")%><%=hello%></div>
+</h2>
+<fieldset class="cbi-section" id="">
+        <div class="fire-second-title">
+                <span id="install_path_span" class="firefly_mt25 cbi-button hidden">Internal Storage</span>
+                <select id="install_path_select" class="firefly_mt25 cbi-button"><option>Internal Storage</option></select>
+                <!-- <span class="firefly_fz19">(Chose App Install Location)</span> -->
+                <div class="fire-manage" id="fire-manage"><button class="cbi-button"><%=translate("Manage")%></button></div>
+                <div class="fire-manage" id="fire-cancel-manage"><button class="cbi-button"><%=translate("Ok")%></button></div>
+        </div>
+        <div id="fire-app-context" class="fire-app-context">
+                <!--
+                <div class="fire-app-list">
+                        <div class="fire-app-logo"></div>
+                        <div class="fire-app-title"></div>
+                        <div class="fire-app-version"></div>
+                        <div class="fire-app-author"></div>
+                </div>
+                -->
+		<div class="fire-app-loading" id="fire-app-loading">
+			<img src="/luci-static/resources/loading.gif" />
+		</div>
+		<div id="fire_app_empty" class="fire_app_empty fire-app-loading"><%=translate("Oops! No application found!")%></div>
+        </div>
+
+        <div class="fire-second-title">
+                <legend class="fire-legend"><%=translate("Install")%></legend>
+        </div>
+        <div class="fire-upload-plugin">
+                <form action="<%=REQUEST_URI%>" method="post" enctype="multipart/form-data">
+                        <span><%=translate("Upload Local Plugin")%>:</span>
+                        <input type="file" name="plugin">
+			<input type="hidden" name="upload" value="upload">
+                        <input type="submit" value='<%=translate("Upload")%>' class="cbi-button">
+                </form>
+        </div>
+	<!-- Alert -->
+	<div class="fire-delete-alert" id="fire-delete-alert"><%=translate("Are you sure to remove this application")%>?</div>
+</fieldset>
+
+<div id="firefly_app_view" class="firefly_app_view hidden">
+    <div class="firefly_app_view_title"><a id="firefly_app_view_close">Close</a></div>
+    <iframe id="firefly_app_view_iframe" class="firefly_app_view_iframe" src=""></iframe>
+</div>
+<%+footer%>

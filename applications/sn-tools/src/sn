@@ -1,0 +1,2 @@
+#!/bin/sh
+strings /dev/mtd2 | sed -n 's/^serial_number=//p'
