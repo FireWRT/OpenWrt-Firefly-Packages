@@ -3,6 +3,7 @@ dist/
 *.o
 *.so
 *.swp
+*.orig
 /docs
 .running-sdk
 build/po2lmo

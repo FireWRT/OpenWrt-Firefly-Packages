@@ -4,6 +4,8 @@
 parameter_count=$#
 parameter_first=$1
 parameter_second=$2
+install_package_name=`basename $parameter_second`
+install_package_path=`dirname $parameter_second`
 config_file="/etc/config/fpkg"
 application_unzip_tmp_path="/tmp/fpkg/"
 list_path=${application_path}"fpkg.list"
@@ -231,23 +233,23 @@ create_links()
 #安装firefly插件
 fpkg_install_firefly_package()
 {
-    local package=${parameter_second}
-    local appinfo_path=`tar -tzf ${package} | grep appinfo`
-    local key_path=`tar -tzf ${package} | grep key`
-    local app_path=${appinfo_path%/*}
-    local appcontrol_path=${app_path}/appcontrol
+	local package=${parameter_second}
+	local appinfo_path=`tar -tzf ${package} | grep appinfo`
+	local key_path=`tar -tzf ${package} | grep key`
+	local app_path=${appinfo_path%/*}
+	local appcontrol_path=${app_path}/appcontrol
     
-    #just unzip two file
-    tar xzf ${package} ${appinfo_path} -C ${application_unzip_tmp_path} 
-    tar xzf ${package} ${key_path} -C ${application_unzip_tmp_path} 
+	#just unzip two file
+	tar xzf ${package} ${appinfo_path} -C ${application_unzip_tmp_path} 
+	tar xzf ${package} ${key_path} -C ${application_unzip_tmp_path} 
 
-    appinfo_path=${application_unzip_tmp_path}${appinfo_path}
-    key_path=${application_unzip_tmp_path}${key_path}
+	appinfo_path=${application_unzip_tmp_path}${appinfo_path}
+	key_path=${application_unzip_tmp_path}${key_path}
 
-    #cd ${application_unzip_tmp_path}
+	#cd ${application_unzip_tmp_path}
     
-    #plugin_Name
-    value=`cat ${appinfo_path} | grep package_name=`
+	#plugin_Name
+	value=`cat ${appinfo_path} | grep package_name=`
 	if [ "${value}x" != "x" ];then
 		value=`echo ${value#package_name} | tr -d " " | tr -d "="`
 		plugin_Name=$value
@@ -267,75 +269,81 @@ fpkg_install_firefly_package()
 		plugin_VersionCode=$value
 	fi
 
-    #plugin_Author
+	#plugin_Author
 	value=`cat ${appinfo_path} | grep package_author=`
 	if [ "${value}x" != "x" ];then
 		value=`echo ${value#package_author} | tr -d " " | tr -d "="`
 		plugin_Author=$value
 	fi
 
-    #plugin_Description
-    value=`cat ${appinfo_path} | grep package_description=`
+	#plugin_Description
+	value=`cat ${appinfo_path} | grep package_description=`
 	if [ "${value}x" != "x" ];then
 		value=`echo ${value#package_description} | tr -d " " | tr -d "="`
 		plugin_Description=$value
 	fi
 
-    #plugin_MinSDKVersion
-    value=`cat ${appinfo_path} | grep package_sdk_min_version=`
+	#plugin_MinSDKVersion
+	value=`cat ${appinfo_path} | grep package_sdk_min_version=`
 	if [ "${value}x" != "x" ];then
 		value=`echo ${value#package_sdk_min_version} | tr -d " " | tr -d "="`
 		plugin_MinSDKVersion=$value
 	fi
 
-    #plugin_TargetSDKVersion
-    value=`cat ${appinfo_path} | grep package_sdk_target_version=`
+	#plugin_TargetSDKVersion
+	value=`cat ${appinfo_path} | grep package_sdk_target_version=`
 	if [ "${value}x" != "x" ];then
 		value=`echo ${value#package_sdk_target_version} | tr -d " " | tr -d "="`
 		plugin_TargetSDKVersion=$value
 	fi
 
-    #plugin_plugin_Autorun
-    value=`cat ${appinfo_path} | grep package_auto_run=`
+	#plugin_plugin_Autorun
+	value=`cat ${appinfo_path} | grep package_auto_run=`
 	if [ "${value}x" != "x" ];then
 		value=`echo ${value#package_auto_run} | tr -d " " | tr -d "="`
 		plugin_plugin_Autorun=$value
 	fi
 
-    #plugin_Largeicon
-    value=`cat ${appinfo_path} | grep package_icon=`
+	#plugin_Largeicon
+	value=`cat ${appinfo_path} | grep package_icon=`
 	if [ "${value}x" != "x" ];then
 		value=`echo ${value#package_icon} | tr -d " " | tr -d "="`
 		plugin_Largeicon=$value
 	fi
     
-    #plugin_ID
+	#plugin_ID
 	value=`cat ${key_path} | grep package_id=`
 	if [ "${value}x" != "x" ];then
 		value=`echo ${value#package_id} | tr -d " " | tr -d "="`
 		plugin_ID=$value
 	fi
 
-    plugin_Position=`uci get fpkg.install_path.name`
-    local plugin_install_path=`fpkg_udisk_name_to_path ${plugin_Position}`"/app"
-    plugin_IntallPath=${plugin_install_path}/${app_path}
-    
-    #执行安装脚本
-	fpkg_check_config
-    tar xzf ${package} -C ${plugin_install_path}
-    create_links ${plugin_IntallPath}/luci
+	plugin_Position=`uci get fpkg.install_path.name`
+	local plugin_install_path=`fpkg_udisk_name_to_path ${plugin_Position}`"/app"
+	#running in usb
+	if [ "${plugin_plugin_Autorun}x" == "2x" ];then
+		plugin_install_path="${install_package_path}/.app"
+		[ -d $plugin_install_path ] || mkdir $plugin_install_path
+	fi
 
-    #save logo path
-    plugin_Largeicon=${plugin_IntallPath}/${plugin_Largeicon}
-    plugin_Smallicon=${plugin_IntallPath}/${plugin_Largeicon}
-    if [ ! -f "${plugin_Largeicon}" ];then
+	plugin_IntallPath=${plugin_install_path}/${app_path}
+    
+	#执行安装脚本
+	fpkg_check_config
+ 	tar xzf ${package} -C ${plugin_install_path}
+	create_links ${plugin_IntallPath}/luci
+
+	#save logo path
+	plugin_Largeicon=${plugin_IntallPath}/${plugin_Largeicon}
+	plugin_Smallicon=${plugin_IntallPath}/${plugin_Largeicon}
+	if [ ! -f "${plugin_Largeicon}" ];then
 		plugin_Largeicon=${default_Largeicon}
 	fi
 	if [ ! -f "${plugin_Smallicon}" ];then
 		plugin_Smallicon=${default_Smallicon}
 	fi	
     
-    #保存配置
+	#保存配置
 	fpkg_save_config
 	
 	#clean

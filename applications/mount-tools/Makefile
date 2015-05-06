@@ -15,7 +15,7 @@ include $(INCLUDE_DIR)/package.mk
 define Package/$(PKG_NAME)
   CATEGORY:=Firefly Configuration
   SUBMENU:=Applications
-  DEPENDS:=+blkid +losetup +ntfs-3g +fdisk +kmod-usb-core +kmod-usb3 +kmod-usb-storage +@BUSYBOX_CONFIG_FUSER +kmod-fs-vfat +kmod-fs-ext4 +kmod-fs-ntfs +kmod-nls-base +kmod-nls-utf8 +kmod-nls-cp437 +kmod-nls-cp850 +kmod-nls-iso8859-1 +kmod-nls-iso8859-15 +kmod-ata-core
+  DEPENDS:=+blkid +losetup +ntfs-3g +fdisk +kmod-usb-core +kmod-usb3 +kmod-usb-storage +@BUSYBOX_DEFAULT_FUSER +kmod-fs-vfat +kmod-fs-ext4 +kmod-fs-ntfs +kmod-nls-base +kmod-nls-utf8 +kmod-nls-cp437 +kmod-nls-cp850 +kmod-nls-iso8859-1 +kmod-nls-iso8859-15 +kmod-ata-core +kmod-ata-ahci
   TITLE:= Auto mount the usb disk,SD card and hard disk
 endef
 

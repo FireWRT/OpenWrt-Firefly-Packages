@@ -20,6 +20,7 @@ include $(INCLUDE_DIR)/kernel.mk
 define Package/ated
   SUBMENU:=Applications
   CATEGORY:=Firefly Configuration
+  DEPENDS:=+wireless-tools
   TITLE:=ATE Daemon
 endef
 

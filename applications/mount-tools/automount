@@ -201,6 +201,32 @@ stop_samba() {
 	fi
 }
 
+app_auto_install() {
+        local path="/mnt/"$1
+        local device=$1
+	local application_unzip_tmp_path="/tmp/fpkg/"
+	[ -d $application_unzip_tmp_path ] && rm $application_unzip_tmp_path -rf
+	mkdir $application_unzip_tmp_path
+        for app in $(ls -1 ${path}/*.ffy)
+        do             
+		local appinfo_path=`tar -tzf ${app} | grep appinfo`
+		tar xzf ${app} ${appinfo_path} -C ${application_unzip_tmp_path} 
+		appinfo_path=${application_unzip_tmp_path}${appinfo_path}
+
+		#plugin_plugin_Autorun
+		local auto_run=`cat ${appinfo_path} | grep package_auto_run=`
+		if [ "${auto_run}x" != "x" ];then
+			auto_run=`echo ${auto_run#package_auto_run} | tr -d " " | tr -d "="`
+		fi
+		[ "${auto_run}x" == "2x" ] && fpkg debug $app
+        done
+	rm $application_unzip_tmp_path -rf
+}   
+
+#app_auto_remove(){
+#
+#}
+
 get_sdxx_data() {
 	dev_sd=$1
 
@@ -322,7 +348,7 @@ wait_jffs2() {
 }
 
 USB_MNT_TMP="/tmp/usbdir"
-if [ `basename $blkdev` != "block" ]; then
+#if [ `basename $blkdev` != "block" ]; then
 
 	device=`basename $DEVPATH`
 	case "$ACTION" in
@@ -337,15 +363,14 @@ if [ `basename $blkdev` != "block" ]; then
 
 		if [ -z "$isusb_flash"]; then
 			partition=`printf "%s:%s" "$dev_head" "$device"`
-			echo $partition>> /tmp/usbdev
-			mkdir -p /mnt/$device
-				# vfat & ntfs-3g check
+			fs_detail=`blkid | grep -w $device | awk -F "TYPE" '{print $2}'`
+			# vfat & ntfs-3g check
 			if  [ `which fdisk` ]; then
-				isntfs=`blkid | grep -w $device | awk -F "TYPE" '{print $2}' | grep ntfs`
-				isexFat=`blkid | grep -w $device | awk -F "TYPE" '{print $2}' | grep exfat`
-				isvfat=`blkid | grep -w $device | awk -F "TYPE" '{print $2}' | grep vfat`
-				islinux=`blkid | grep -w $device | awk -F "TYPE" '{print $2}' | grep ext`
-				ishfs=`blkid | grep -w $device | awk -F "TYPE" '{print $2}' | grep hfs`
+				isntfs=`echo $fs_detail | grep ntfs`
+				isexFat=`echo $fs_detail | grep exfat`
+				isvfat=`echo $fs_detail | grep vfat`
+				islinux=`echo $fs_detail | grep ext`
+				ishfs=`echo $fs_detail | grep hfs`
 				isfuse=`lsmod | grep fuse`
 				isntfs3g=`which ntfs-3g`
 				ismodexfat=`lsmod | grep exfat`
@@ -357,7 +382,8 @@ if [ `basename $blkdev` != "block" ]; then
 			fi
 
 			if [ "$isexFat" -a "$ismodexfat" ]; then
-				mount_ret=$(mount -t exfat /dev/$device /mnt/$device 2>&1)
+			    mkdir -p /mnt/$device
+				mount_ret=$(mount -t exfat -o rw /dev/$device /mnt/$device 2>&1)
 				mount_ret_erro=`echo $mount_ret | grep Failed`		
 
 				if [ -z "$mount_ret_erro" ];then
@@ -370,9 +396,11 @@ if [ `basename $blkdev` != "block" ]; then
 				else
 					L_MountRet="erro"
 				fi
+				echo $partition>> /tmp/usbdev
+				chmod 777 /mnt/$device
 
 			elif [ "$isntfs" -a "$isfuse" -a "$isntfs3g" ]; then
-			
+			    mkdir -p /mnt/$device
 				mount_ret=$(ntfs-3g -o noatime,big_writes,async,nls=utf8 /dev/$device /mnt/$device 2>&1)
 				#echo "mount_ret ntfs = "$mount_ret
 				mount_ret_erro=`echo $mount_ret | grep Failed`		
@@ -388,8 +416,11 @@ if [ `basename $blkdev` != "block" ]; then
 				else
 					L_MountRet="erro"
 				fi
+				echo $partition>> /tmp/usbdev
+				chmod 777 /mnt/$device
 
 			elif [ "$isvfat" ]; then
+			    mkdir -p /mnt/$device
 				mount_ret=$(mount -t vfat -o iocharset=utf8,rw,umask=0000,dmask=0000,fmask=0000 /dev/$device /mnt/$device 2>&1)
 				mount_ret_erro=`echo $mount_ret | grep failed`		
 				
@@ -404,10 +435,12 @@ if [ `basename $blkdev` != "block" ]; then
 				else
 					L_MountRet="erro"
 				fi
+				echo $partition>> /tmp/usbdev
+				chmod 777 /mnt/$device
 
 			elif [ "$islinux" ]; then
-
-				mount_ret=$(mount -t ext4 /dev/$device /mnt/$device 2>&1)
+                mkdir -p /mnt/$device
+				mount_ret=$(mount -t ext4 -o rw /dev/$device /mnt/$device 2>&1)
 				mount_ret_erro=`echo $mount_ret | grep failed`		
 
 				if [ -z "$mount_ret_erro" ];then
@@ -420,8 +453,11 @@ if [ `basename $blkdev` != "block" ]; then
 				else
 					L_MountRet="erro"
 				fi
+				echo $partition>> /tmp/usbdev
+				chmod 777 /mnt/$device
 
 			elif [ "$ishfs" ]; then
+			    mkdir -p /mnt/$device
 				mount_ret=$(mount -o force -t hfsplus /dev/$device /mnt/$device 2>&1)
 				mount_ret_erro=`echo $mount_ret | grep failed`		
 
@@ -436,6 +472,8 @@ if [ `basename $blkdev` != "block" ]; then
 				else
 					L_MountRet="erro"
 				fi
+				echo $partition>> /tmp/usbdev
+				chmod 777 /mnt/$device
 			else
 				L_MountRet="erro"
 			fi
@@ -446,6 +484,9 @@ if [ `basename $blkdev` != "block" ]; then
 					mkswap /dev/${device}/swapfile
 					swapon /dev/${device}/swapfile
 				fi
+
+				#App Auto run
+				app_auto_install $device
 			fi
 
 		else
@@ -583,5 +624,5 @@ if [ `basename $blkdev` != "block" ]; then
 		;;
 	esac
 
-fi
+#fi
 
