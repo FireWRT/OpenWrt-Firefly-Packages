@@ -41,7 +41,7 @@ config wifi-iface
         option mode     ap
         option ssid     $ssid
         option encryption psk2
-        option key      12345678
+        option key      firefly2015
 
 EOF
 
