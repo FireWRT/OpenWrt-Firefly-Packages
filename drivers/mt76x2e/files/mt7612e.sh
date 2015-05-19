@@ -28,11 +28,9 @@ detect_mt7612e() {
 	 cat <<EOF
 config wifi-device      mt7612e
         option type     mt7612e
-        option vendor   ralink
-        option band     5G
-        option channel  0
-        option autoch   2
-	option bw       2
+        option hwmode   11a
+        option htmode   VHT80
+        option channel  auto
 
 config wifi-iface
         option device   mt7612e

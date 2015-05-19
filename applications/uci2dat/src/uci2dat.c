@@ -141,17 +141,17 @@ param CFG_ELEMENTS[] =
     /* Default configurations described in :
            MTK_Wi-Fi_SoftAP_Software_Programmming_Guide_v3.6.pdf
     */
-    {"CountryRegion", "region", {0}, hooker,  "1"},
-    {"CountryRegionABand", "aregion", {0}, hooker, "7"},
-    {"CountryCode", "country", {0}, hooker, NULL},
+    {"CountryRegion", "country", {0}, hooker,  "US"},
+    {"CountryRegionABand", "country", {0}, hooker, "US"},
+    {"CountryCode", "country", {0}, hooker, "US"},
     {"BssidNum", NULL, {0}, hooker,  "1"},
     {"SSID1", NULL, {0}, hooker,  "OpenWrt"},
     {"SSID2", NULL, {0}, hooker,  NULL},
     {"SSID3", NULL, {0}, hooker,  NULL},
     {"SSID4", NULL, {0}, hooker,  NULL},
-    {"WirelessMode", "wifimode", {0}, hooker,  "9"},
+    {"WirelessMode", "hwmode", {0}, hooker,  ""},
     {"TxRate", "txrate", {0}, hooker, "0"},
-    {"Channel", "channel", {0}, hooker,  "0"},
+    {"Channel", "channel", {0}, hooker,  "auto"},
     {"BasicRate", "basicrate", {0}, hooker, "15"},
     {"BeaconPeriod", "beacon", {0}, hooker,  "100"},
     {"DtimPeriod", "dtim", {0}, hooker,  "1"},
@@ -185,7 +185,7 @@ param CFG_ELEMENTS[] =
     {"HideSSID", "hidden", {0}, hooker,  "0"},
     {"StationKeepAlive", NULL, {0}, NULL, "0"},
     {"ShortSlot", "shortslot", {0}, hooker,  "1"},
-    {"AutoChannelSelect", "channel", {0}, hooker, "2"},
+    {"AutoChannelSelect", "channel", {0}, hooker, "auto"},
     {"IEEE8021X", "ieee8021x", {0}, hooker, "0"},
     {"IEEE80211H", "ieee80211h", {0}, hooker, "0"},
     {"CSPeriod", "csperiod", {0}, hooker, "10"},
@@ -254,12 +254,13 @@ param CFG_ELEMENTS[] =
     {"PreAuthifname", "preauthifname", {0}, hooker, "br-lan"},
     {"HT_HTC", "ht_htc", {0}, hooker, "0"},
     {"HT_RDG", "ht_rdg", {0}, hooker,  "0"},
-    {"HT_EXTCHA", "ht_extcha", {0}, hooker, "0"},
+    {"HT_EXTCHA", "channel", {0}, hooker, "0"},
     {"HT_LinkAdapt", "ht_linkadapt", {0}, hooker, "0"},
     {"HT_OpMode", "ht_opmode", {0}, hooker, "0"},
     {"HT_MpduDensity", NULL, {0}, hooker, "5"},
-    {"HT_BW", "bw", {0}, hooker,  "0"},
-    {"VHT_BW", "bw", {0}, hooker,  "0"},
+    {"HT_BW", "htmode", {0}, hooker,  "0"},
+    {"HT_CE", "noscan", {0}, hooker,  "0"},
+    {"VHT_BW", "htmode", {0}, hooker,  "0"},
     {"VHT_SGI", "vht_sgi", {0}, hooker,  "1"},
     {"VHT_STBC", "vht_stbc", {0}, hooker, "0"},
     {"VHT_BW_SIGNAL", "vht_bw_sig", {0}, hooker,  "0"},
@@ -408,6 +409,7 @@ static struct uci_context * uci_ctx;
 static struct uci_package * uci_wireless;
 static wifi_params wifi_cfg[DEVNUM_MAX];
 
+const char * find_hwmode(char *);
 
 char * __get_value(char * datkey)
 {
@@ -867,30 +869,43 @@ void hooker(FILE * fp, param * p, const char * devname)
             FPRINT(fp, p, wifi_cfg[N].vifs[i].hidden.value[0]=='1'?"1":"0");
         }
     }
+    /*add by wengbj linux.c@foxmail.com */
     else if(0 == strcmp(p->dat_key, "Channel"))
     {
-        if(0 == strcmp(p->value, "auto"))
-            FPRINT(fp, p, "0");
+        if( (0 == strcmp(p->value, "auto")) || (0 == strcmp(p->value, "0")) )
+            FPRINT(fp, p, "11");
         else
             FPRINT(fp, p, p->value);
     }
     else if(0 == strcmp(p->dat_key, "AutoChannelSelect"))
     {
-        if(0 == strcmp(p->value, "0"))
+        if( (0 == strcmp(p->value, "auto")) || (0 == strcmp(p->value, "0")) )
             FPRINT(fp, p, "2");
         else
             FPRINT(fp, p, "0");
     }
     else if(0 == strcmp(p->dat_key, "HT_BW"))
     {
-        if(0 == strcmp(p->value, "0"))
+        if(0 == strcmp(p->value, "HT20"))
             FPRINT(fp, p, "0");
-        else
+        else if(0 == strcmp(p->value, "HT40"))
             FPRINT(fp, p, "1");
+        else if(0 == strcmp(p->value, "VHT40"))
+            FPRINT(fp, p, "1");
+        else if(0 == strcmp(p->value, "VHT80"))
+            FPRINT(fp, p, "1");
+        else
+            FPRINT(fp, p, "0");
     }
     else if(0 == strcmp(p->dat_key, "VHT_BW"))
     {
-        if(0 == strcmp(p->value, "2"))
+        if(0 == strcmp(p->value, "HT20"))
+            FPRINT(fp, p, "0");
+        else if(0 == strcmp(p->value, "HT40"))
+            FPRINT(fp, p, "0");
+        else if(0 == strcmp(p->value, "VHT40"))
+            FPRINT(fp, p, "0");
+        else if(0 == strcmp(p->value, "VHT80"))
             FPRINT(fp, p, "1");
         else
             FPRINT(fp, p, "0");
@@ -1039,12 +1054,69 @@ void hooker(FILE * fp, param * p, const char * devname)
         /* TODO */
     }
 #endif
+    /*add by wengbj linux.c@foxmail.com */
+    else if(0 == strcmp(p->dat_key, "CountryRegion"))
+    {
+        if( (0 == strcmp(p->value, "CN")) || (0 == strcmp(p->value, "cn")) )
+            FPRINT(fp, p, "0");
+        else
+            FPRINT(fp, p, "1");
+    }
+    else if(0 == strcmp(p->dat_key, "CountryRegionABand"))
+    {
+        if( (0 == strcmp(p->value, "CN")) || (0 == strcmp(p->value, "cn")) )
+            FPRINT(fp, p, "4");
+        else
+            FPRINT(fp, p, "7");
+    }
+    else if(0 == strcmp(p->dat_key, "WirelessMode"))
+    {
+        FPRINT(fp, p, find_hwmode(p->value));
+    }
+    else if(0 == strcmp(p->dat_key, "HT_CE"))
+    {
+        if(0 == strcmp(p->value, "1"))
+            FPRINT(fp, p, "0");
+        else
+            FPRINT(fp, p, "1");
+    }
+    else if(0 == strcmp(p->dat_key, "HT_EXTCHA"))
+    {
+        if( (0 == strcmp(p->value, "auto")) || (0 == strcmp(p->value, "0")) )
+            FPRINT(fp, p, "1");
+	else if ( atoi(p->value)  < 7 )
+            FPRINT(fp, p, "0");
+	else if ( ( (atoi(p->value)/4)%2==0 ) && atoi(p->value) > 16 )
+            FPRINT(fp, p, "0");
+        else
+            FPRINT(fp, p, "1");
+    }
     /* the rest part is quite simple! */
     else
     {
         FPRINT(fp, p, p->value);
     }
 
+}
+
+const char * find_hwmode(char *p){
+    char hwmode[256];
+    int count=0;
+    strcpy(hwmode,p);
+    for(count=0;count<strlen(hwmode);count++){
+        if(hwmode[count]=='a')
+            return "14";
+    }
+    for(count=0;count<strlen(hwmode);count++){
+        if(hwmode[count]=='g' || hwmode[count]=='b')
+            return "9";
+    }
+    for(count=0;count<strlen(hwmode);count++){
+        if(hwmode[count]=='n')
+            return "6";
+    }
+    // unknow mode
+    return "9";
 }
 
 

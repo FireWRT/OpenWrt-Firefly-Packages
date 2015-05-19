@@ -373,6 +373,7 @@ USB_MNT_TMP="/tmp/usbdir"
 				ishfs=`echo $fs_detail | grep hfs`
 				isfuse=`lsmod | grep fuse`
 				isntfs3g=`which ntfs-3g`
+				isufsd=`lsmod | grep ufsd`
 				ismodexfat=`lsmod | grep exfat`
 			else
 				isntfs=""
@@ -401,10 +402,21 @@ USB_MNT_TMP="/tmp/usbdir"
 
 			elif [ "$isntfs" -a "$isfuse" -a "$isntfs3g" ]; then
 			    mkdir -p /mnt/$device
-				mount_ret=$(ntfs-3g -o noatime,big_writes,async,nls=utf8 /dev/$device /mnt/$device 2>&1)
-				#echo "mount_ret ntfs = "$mount_ret
-				mount_ret_erro=`echo $mount_ret | grep Failed`		
-				
+								
+				if [ "$isufsd" ]; then
+					chkntfs -f /dev/$device
+					mount_ret=$(mount -t ufsd /dev/$device /mnt/$device 2>&1)
+					mount_ret_erro=`echo $mount_ret | grep Failed`
+				else
+					mount_ret_erro="not support ufsd"
+				fi
+
+				if [ ! -z "$mount_ret_erro" ];then
+					mount_ret=$(ntfs-3g -o noatime,big_writes,async,nls=utf8 /dev/$device /mnt/$device 2>&1)
+					#echo "mount_ret ntfs = "$mount_ret
+					mount_ret_erro=`echo $mount_ret | grep Failed`		
+				fi
+
 				if [ -z "$mount_ret_erro" ];then
 		
 					start_gpio 1>/dev/null 2>&1

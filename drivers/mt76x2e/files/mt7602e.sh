@@ -28,10 +28,9 @@ detect_mt7602e() {
          cat <<EOF
 config wifi-device      mt7602e
         option type     mt7602e
-        option vendor   ralink
-        option band     2.4G
-        option channel  0
-        option autoch   2
+        option hwmode   11n
+        option htmode   HT40
+        option channel  auto
 
 config wifi-iface
         option device   mt7602e
