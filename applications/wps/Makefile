@@ -23,7 +23,9 @@ endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/rc.button/
-	$(INSTALL_BIN) ./wps $(1)/etc/rc.button/wps
+	$(INSTALL_DIR) $(1)/sbin/
+	$(INSTALL_BIN) ./wps_button $(1)/etc/rc.button/wps
+	$(INSTALL_BIN) ./wps $(1)/sbin/wps
 endef
 
 

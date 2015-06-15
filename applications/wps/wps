@@ -1,12 +1,100 @@
 #!/bin/sh
 
-touch /tmp/wps.log
+LOG_FILE="/tmp/wps.log"
+STATUS_FILE="/tmp/wps.status"
+PID_FILE="/var/run/wps.pid"
+PID=$$
+STATUS=0
 
-iwpriv ra0 set WscConfMode=7
-iwpriv ra0 set WscMode=2
-iwpriv ra0 set WscGetConf=1
+ra0_wps_on(){
+	echo "turn on 2.4g wps!" >> $LOG_FILE
+	echo "waiting for device to connect ..." >> $LOG_FILE
 
-iwpriv rai0 set WscConfMode=7
-iwpriv rai0 set WscMode=2
-iwpriv rai0 set WscGetConf=1
+	iwpriv ra0 set WscConfMode=7
+	iwpriv ra0 set WscMode=2
+	iwpriv ra0 set WscGetConf=1
+	set_wps_status 1
+}
+
+ra0_wps_off(){
+	echo "turn off wps!" >> $LOG_FILE
+
+	iwpriv ra0 set WscConfMode=0
+	iwpriv ra0 set WscMode=0
+	iwpriv ra0 set WscGetConf=1
+}
+
+rai0_wps_on(){
+	echo "turn on 5g wps!" >> $LOG_FILE
+	echo "waiting for device to connect ..." >> $LOG_FILE
+
+	iwpriv rai0 set WscConfMode=7
+	iwpriv rai0 set WscMode=2
+	iwpriv rai0 set WscGetConf=1
+	set_wps_status 2
+}
+
+rai0_wps_off(){
+	echo "turn off wps!" >> $LOG_FILE
+
+	iwpriv rai0 set WscConfMode=0
+	iwpriv rai0 set WscMode=0
+	iwpriv rai0 set WscGetConf=1
+}
+
+
+wps_off(){
+	ra0_wps_off
+	rai0_wps_off
+	set_wps_status 0
+}
+
+
+read_wps_status(){
+	[ ! -z `cat $STATUS_FILE | grep "STATUS:OFF"` ] && STATUS=0
+	[ ! -z `cat $STATUS_FILE | grep "STATUS:2.4G_ON"` ] && STATUS=1
+	[ ! -z `cat $STATUS_FILE | grep "STATUS:5G_ON"` ] && STATUS=2
+}
+
+# 0 wps off
+# 1 2.4g wps on
+# 2 5g wps on
+set_wps_status(){
+	local status=$1
+	[ "${status}x" == "0x" ] && echo "STATUS:OFF" > $STATUS_FILE
+	[ "${status}x" == "1x" ] && echo "STATUS:2.4G_ON" > $STATUS_FILE
+	[ "${status}x" == "2x" ] && echo "STATUS:5G_ON" > $STATUS_FILE
+}
+
+init_wps(){
+	echo "#wps log file" > $LOG_FILE
+	read_wps_status
+	[ -f $STATUS_FILE ] || set_wps_status 0
+}
+
+
+start_wps(){
+	echo $PID > $PID_FILE
+	init_wps
+	if [ "${STATUS}x" == "2x" ];then
+		wps_off
+	else
+		[ "${STATUS}x" == "0x" ] && ra0_wps_on
+		[ "${STATUS}x" == "1x" ] && {
+                        ra0_wps_off      
+                        rai0_wps_on
+                }
+		sleep 120
+		wps_off
+	fi
+}
+
+stop_wps(){
+	[ -f $PID_FILE ] && kill `cat $PID_FILE` && rm $PID_FILE
+}
+
+
+stop_wps
+start_wps
+stop_wps
 
